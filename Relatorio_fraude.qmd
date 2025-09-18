@@ -1,0 +1,1612 @@
+---
+title: "Projeto de Detecção de Fraude"
+subtitle: "Usando Machine Learning para Detectar Fraudes"
+author: "Elton de Oliveira Jorge"
+date: today
+lang: pt-BR
+format:
+  pdf:
+    toc: true
+    toc-title: "Sumário"
+    number-sections: true
+
+jupyter:
+  kernel: python3
+
+execute:
+  echo: false
+---
+
+::: cell
+```{=html}
+<style>
+p {
+  text-indent: 2em;    /* define recuo na primeira linha do parágrafo */
+  text-align: justify; /* opcional: justifica o texto */
+}
+</style>
+```
+:::
+
+# Introdução
+
+O crescimento exponencial das transações financeiras digitais impulsionou uma nova era de conveniência, mas também expôs o setor a ameaças cada vez mais sofisticadas. As fraudes em cartões de crédito representam uma dessas ameaças, resultando em perdas financeiras substanciais para instituições bancárias e prejuízos diretos aos usuários. Diante desse cenário, a análise preditiva e o aprendizado de máquina emergem como ferramentas essenciais para desenvolver sistemas de detecção de fraudes proativos e eficientes. Este trabalho propõe a construção de um modelo de classificação para identificar transações legítimas e fraudulentas, utilizando o conjunto de dados Credit Card Fraud Detection do Kaggle. A eficácia desse modelo é crucial não apenas para evitar perdas, mas também para assegurar a integridade e a segurança das operações financeiras.
+
+# Objetivo Geral
+
+Desenvolver um modelo de machine learning eficaz para a detecção de fraudes em transações de cartão de crédito, utilizando o conjunto de dados Credit Card Fraud Detection do Kaggle.
+
+## Objetivos especificos
+
+* Analisar e explorar as características do conjunto de dados para identificar padrões relevantes e lidar com o desbalanceamento das classes.
+
+* Testar e comparar o desempenho de diversos algoritmos de classificação
+
+* Avaliar os modelos com base em métricas apropriadas para dados desbalanceados, com foco principal na Área sob a Curva de Precisão-Recall (PR-AUC), além de outras métricas como o F1-Score e a Matriz de Confusão.
+
+* Criar uma função de avaliação financeira que calcule o Retorno sobre o Investimento (ROI) e o Impacto Líquido do modelo.
+
+* Utilizar um valor hipotético de custo médio por fraude de R$ 5.000 e um custo de campanha contra a fraude de R$ 1.000 para parametrizar a função financeira.
+
+* Identificar o modelo com o melhor desempenho técnico e maior impacto financeiro para a tarefa de detecção de fraudes.
+
+# Metodologia
+
+## Fonte e Caracterização dos dados
+
+O presente estudo foi realizado com base no conjunto de dados "Credit Card Fraud Detection", disponível na plataforma Kaggle. Este dataset contém 284.807 transações realizadas por cartões de crédito em setembro de 2013. Ele é composto por variáveis anônimas (V1 a V28), resultantes de uma transformação de **Análise de Componentes Principais (PCA)** para proteção da privacidade dos dados. As variáveis __Time__ e __Amount__ são originais, e a variável-alvo, __Class__, indica se a transação é fraudulenta (valor 1) ou não (valor 0). O conjunto de dados é altamente desbalanceado, com um número muito pequeno de transações fraudulentas.
+
+## Pré-processamento dos Dados
+
+Antes da modelagem, o conjunto de dados passou por um processo de pré-processamento. Inicialmente, foi realizada uma __análise exploratória dos dados (EDA)__ para compreender a distribuição das variáveis e a proporção da classe-alvo. Para mitigar o problema do desbalanceamento, foi aplicada a técnica de __oversampling SMOTE__, que cria amostras sintéticas da classe minoritária (fraude) para equilibrar a proporção das classes e evitar que o modelo se generalize mal. Em seguida, os dados foram divididos em conjuntos de treino e teste, garantindo uma avaliação imparcial do desempenho do modelo.
+
+## Modelagem e Treinamento
+
+Para identificar o modelo com o melhor desempenho, foram avaliados diversos algoritmos de classificação. Inicialmente, utilizamos modelos de base como __Regressão Logística__ e __Árvore de Decisão__ para estabelecer uma performance inicial.
+
+Em seguida, exploramos a força dos __algoritmos de boosting__, com o uso do __Gradient Boosting__ e __XGBoost__, que é reconhecido pela sua alta performance em competições de machine learning.
+
+Para ir além, aplicamos técnicas de ensemble como o __Voting Classifier__ e o __Stacking Classifier__. Esses métodos combinam as previsões de múltiplos modelos para obter resultados mais robustos e precisos.
+
+Por fim, testamos a abordagem do algoritmo __não supervisionado Isolation Forest__, que é particularmente eficaz para a detecção de anomalias, como é o caso de transações fraudulentas.
+
+Cada modelo foi treinado com os dados pré-processados e validados, com foco na otimização de seus hiperparâmetros para garantir a melhor performance possível na tarefa de detecção de fraudes.
+
+## Avaliação de Desempenho
+
+A performance dos modelos foi avaliada utilizando-se métricas específicas para problemas com classes desbalanceadas. O principal critério de avaliação foi a __Área sob a Curva de Precisão-Recall (PR-AUC)__, que é mais informativa que a __Curva ROC__ em cenários com poucas classes positivas. Adicionalmente, também foram analisadas outras métricas como o __F1-Score__, a __Precisão__ e o __Recall__ para uma compreensão completa do desempenho de cada modelo.
+
+## Análise de Impacto Financeiro
+
+Para além das métricas de desempenho técnico, foi desenvolvida uma função de avaliação financeira para mensurar o __Impacto Líquido__ e o __ROI__ dos modelos. Essa função considerou um valor hipotético de __R$ 5.000__ como o custo médio de uma fraude e um __custo de R$ 1.000__ para a confirmação de uma transação suspeita (falso positivo). O modelo com o melhor desempenho técnico e o maior impacto financeiro positivo foi selecionado como a solução final do projeto.
+
+# Análise Exploratória e Pré-processamento
+
+Neste capítulo, mergulhamos no conhecimento e na preparação da nossa base de dados. Iremos explorar e analisar a distribuição das features, identificar as características mais relevantes e realizar testes estatísticos para validar nossas observações. Esta etapa é crucial para a pré-modelagem de dados, garantindo que a base esteja devidamente tratada e pronta para o desenvolvimento e a escolha dos algoritmos de machine learning.
+
+```{python}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import gdown
+import pickle
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.preprocessing import RobustScaler
+from scipy.stats import mannwhitneyu, pointbiserialr
+from statsmodels.stats.multitest import multipletests
+from statsmodels.distributions.empirical_distribution import ECDF
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score, roc_curve
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, auc
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from matplotlib.colors import ListedColormap
+from sklearn.metrics import average_precision_score, precision_recall_curve
+from sklearn.experimental import enable_halving_search_cv
+from sklearn.model_selection import HalvingGridSearchCV
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from xgboost import XGBClassifier
+from sklearn.ensemble import VotingClassifier, StackingClassifier, IsolationForest
+from sklearn.metrics import RocCurveDisplay, PrecisionRecallDisplay
+```
+
+```{python}
+#Como o arquivo é grande, vamos trabalhar com o gdow para baixar o arquivo
+url = "https://drive.google.com/file/d/1BoM9zUdFJU2fbgrkVPrjt24fSXZ20Xsz/view?usp=sharing"
+ID_arquivo = "1BoM9zUdFJU2fbgrkVPrjt24fSXZ20Xsz"
+link_fixo = "https://drive.google.com/uc?id="
+
+url_acesso = (link_fixo + ID_arquivo)
+```
+
+```{python}
+#| echo: false
+#| output: false
+
+
+try:
+  gdown.download(url_acesso, "credicard.csv", quiet = False)
+  dados = pd.read_csv("credicard.csv", engine = "python")
+ 
+
+except Exception as e:
+  print(f"Erro ao baixar o arquivo:{e}")
+```
+
+## Análise Exploratória dos Dados, Preparação de Dados e Engenharia de Features
+
+A etapa inicial do projeto consistiu na análise exploratória dos dados (EDA) para compreender a estrutura e as características do conjunto de dados. Foi constatado que as variáveis V1 a V28 já haviam passado por uma transformação de __Análise de Componentes Principais (PCA)__ para garantir a privacidade dos titulares dos cartões. As únicas variáveis originais mantidas foram o __Time__ e a __Amount__, além da variável-alvo, __Class__.
+
+Durante a análise, foi identificada a presença de cerca de 1062 registros duplicados. Para o tratamento desses dados, foi adotada uma abordagem estratégica para não comprometer a escassez de informações sobre a classe minoritária. Os dados duplicados da classe negativa (transações legítimas) foram removidos. No entanto, os registros duplicados da classe positiva (transações fraudulentas) foram mantidos. Essa decisão foi tomada para preservar cada exemplo da classe de fraude, considerada rara e de grande valor para o treinamento do modelo.
+
+```{python}
+dados_class = dados["Class"].value_counts().reset_index( name = "Qntd")
+```
+
+
+```{python}
+#Definindo os rotulos
+rotulos = ["Não fraude", "fraude"]
+
+#Utilizando uma explosão para separar as classes
+destaque = [0, 0.3]
+
+#criando a figura
+plt.figure(figsize = (8,8), facecolor = "lightgray")
+
+plt.pie(
+    x = dados_class["Qntd"],
+    labels = rotulos,
+    autopct= "%1.2f%%",
+    explode = destaque
+
+
+)
+
+plt.title("Distribuições das Classes", fontweight = "bold", fontsize = 20, pad = 10)
+plt.show()
+```
+
+O desbalanceamento de classes é um problema central em qualquer projeto de detecção de fraudes. No nosso dataset, essa característica é evidente: as transações fraudulentas representam apenas 0,17% do total, enquanto as transações legítimas compõem a vasta maioria. Esse desequilíbrio representa um desafio significativo para a maioria dos algoritmos de machine learning, que tendem a se tornar tendenciosos e a falhar na detecção da classe minoritária. O gráfico a seguir ilustra essa distribuição desigual entre transações legítimas e fraudulentas.
+
+
+```{python}
+#Gerando um grafico de barra, para uma visualização diferente da distribuiçao de classes
+counts = dados["Class"].value_counts().reindex([0,1]).fillna(0).astype(int)
+props  = dados["Class"].value_counts(normalize=True).reindex([0,1]).fillna(0)*100
+
+fig, ax = plt.subplots(facecolor = "lightgray")
+
+ax.bar(["Não fraude","Fraude"], counts.values)
+for i, v in enumerate(counts.values):
+    ax.text(i, v, f"{v:,}\n({props.values[i]:.3f}%)", ha='center', va='bottom')
+ax.set_ylabel("Qtde")
+ax.set_title("Distribuição de Classes", fontweight = "bold", fontsize = 20, pad = 20)
+
+ax.spines[["top", "right"]].set_visible(False)
+
+plt.show()
+
+prevalencia = props.loc[1] if 1 in props.index else 0.0
+print(f"Prevalência de fraude: {prevalencia:.4f}%")
+```
+
+### Distribuição dos Valores das transações(Amount)
+
+A análise da variável Amount, que representa o valor das transações, mostra um comportamento concentrado em valores baixos tanto nas operações legítimas (classe 0) quanto nas fraudulentas (classe 1).
+
+```{python}
+#BoxPlot por classes
+fig,ax3 = plt.subplots(figsize = (8, 6), facecolor = "lightgray")
+
+sns.boxplot(
+    data = dados,
+    x = "Class",
+    y = "Amount",
+    ax = ax3
+)
+
+ax3.set_title("Amount por classes", fontweight = "bold", fontsize = 20)
+
+sns.despine()
+plt.show()
+```
+
+O gráfico a seguir ilustra a distribuição dos valores das transações em uma escala logarítmica para uma melhor visualização dos dados
+
+```{python}
+#Histograma sobrepostos com log1p(Amount) para cauda longa
+fig, ax5 = plt.subplots(figsize = (8, 6), facecolor = "lightgray")
+for c in [0, 1]:
+  a = np.log1p(dados.loc[dados.Class ==c, "Amount"])
+  ax5.hist(a,
+           bins =60,
+           density = True,
+           alpha = 0.5,
+           label = f"Class = {c}"
+
+           )
+
+plt.xlabel("log1p(Amount)")
+plt.ylabel("Densidade")
+plt.title("Distribuição de Amount(log1p)", fontweight = "bold", fontsize = 20, pad = 20)
+
+plt.legend()
+
+#Remover spines de cima e da direita
+ax = plt.gca()
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+plt.show()
+```
+
+Nas transações não fraudulentas, observam-se alguns casos de valores extremamente altos, chegando a ultrapassar 25 mil. Esses valores são legítimos, mas funcionam como pontos fora da curva (outliers), comuns em operações de grande porte.
+
+Nas transações fraudulentas, também existem outliers, porém em patamares significativamente menores. Isso indica que, embora a maioria das fraudes aconteça em valores baixos, dificilmente chegam ao volume financeiro observado em transações legítimas de maior valor.
+
+Do ponto de vista de negócio, isso sugere que fraudes de alto valor são menos frequentes, mas ainda assim é essencial monitorar transações pequenas, que concentram a maior parte das ocorrências.
+Do ponto de vista de análise de dados, a variável Amount isoladamente não separa bem fraude de não fraude, mas fornece indícios que podem ser úteis quando combinada a outras variáveis em modelos de machine learning para detecção de fraudes.
+
+Para aprofundar a análise da variável Amount e seu impacto direto no risco, foi calculada a taxa de fraude por decil de valor. O gráfico abaixo demonstra que a incidência de fraudes varia significativamente de acordo com a faixa de valor da transação, fornecendo uma visão clara de onde o risco é mais elevado.
+
+```{python}
+
+#Criando uma coluna com faixa de bins da feature  "Amount"
+#pd.qcut divide a coluna em faixais com base no quantis
+# q é o numero de observaçoes que sera divido
+# duplicates eliminada as duplicas, descartando faixas que contem o mesmo valores
+dados["amount_bin"] = pd.qcut(dados["Amount"], q = 10, duplicates = "drop")
+
+#Calcula a taxa de fraude bins
+fraud_rate_by_bin = dados.groupby("amount_bin", observed = True)["Class"].mean() * 100
+
+# Calcula a quantidade de transações possuem cada bins
+count_by_bin = dados.groupby("amount_bin", observed = True)["Class"].size()
+
+# Plotando um grafico de linha
+ax = fraud_rate_by_bin.plot(kind = "line", marker = "o")
+ax.set_facecolor("lightgray")
+ax.set_ylabel("Taxa de Fraude(%)")
+ax.set_xlabel("Faixa de Amount(decis)")
+ax.set_title("Taxa de Fraude por Decil de Amount", fontweight = "bold", fontsize = 20, pad = 20)
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Análises das Classes
+
+A análise exploratória dos dados permite identificar padrões relevantes no comportamento das transações e no perfil das fraudes.
+
+Primeiramente, avaliamos a distribuição do tempo das transações por classe. O gráfico abaixo mostra que tanto as transações legítimas quanto as fraudulentas ocorrem ao longo de todo o período observado, mas com concentrações diferentes em determinados intervalos. Essa diferença sugere que, em alguns horários, a incidência de fraude pode ser relativamente maior, o que pode ser explorado em estratégias de monitoramento, para identificar possíveis janelas de maior risco, mas deve ser usada em conjuntos com outras variáveis.
+
+
+```{python}
+
+#Ánalisando a distribuição por time  e ammount
+num_cols=  ["Time"]
+
+for col in num_cols:
+  plt.figure(figsize = (8,8), facecolor = "lightgray")
+
+  sns.kdeplot(
+      data = dados,
+      x = col,
+      hue = "Class",
+      fill = True,
+      common_norm= False,
+      alpha = 0.5
+  )
+
+  plt.title(f"Distribuição de {col} por Classe de Transação", fontweight = "bold", fontsize = 20)
+  plt.legend(title = "Classes", labels = ["Não fraude", "Fraude"])
+
+  plt.tight_layout()
+  sns.despine()
+  plt.show()
+```
+
+Em seguida, ao analisar a quantidade de transações por hora após a primeira operação, observa-se que o volume aumenta significativamente durante determinadas faixas horárias, refletindo picos de uso normal do sistema. Contudo, o percentual de fraudes (linha vermelha) não acompanha o mesmo padrão: ele é mais elevado nos primeiros horários, diminuindo gradativamente ao longo do tempo. Esse descompasso evidencia que, embora o volume de operações seja um fator importante, o risco de fraude está mais concentrado em momentos específicos do ciclo de uso.
+
+```{python}
+
+#Criando feature com base na coluna time
+hora_valor = dados["Time"].apply(lambda x: (x /3600) % 24).astype(int)
+
+#Inserindo após a coluna Time
+dados.insert(loc = 1, column = "Hour", value = hora_valor)
+
+
+```
+
+```{python}
+#Agrupar a colunas "Hour"
+rate_by_hour = dados.groupby("Hour")["Class"].mean() * 100
+cnt_by_hour = dados.groupby("Hour")["Class"].size()
+
+#criando a figura e eixo
+fig, ax1 = plt.subplots(figsize = (10, 5), facecolor = "lightgray")
+
+#Plotando o gráfico de barras: com contagem de transaçoes
+ax1.bar(
+    cnt_by_hour.index,
+    cnt_by_hour,
+    color = "skyblue",
+    alpha = 0.6,
+    label = "Contagem"
+)
+ax1.set_xlabel("Hora após a primeira transaçoes")
+ax1.set_ylabel("Número de transações", color = "blue")
+ax1.tick_params(axis = "y", labelcolor = "blue")
+
+#criando um segundo eixo: com o percentual de classe 1
+ax2 = ax1.twinx() # criando um segundo eixo, compartilhando o mesmo eixo x
+ax2.plot(rate_by_hour.index,
+         rate_by_hour,
+         color = "red",
+         marker = "o",
+         label = "Percentual de Classes 1")
+
+ax2.set_ylabel("Percentual de Classe 1(%)", color = "red")
+ax2.tick_params(axis = "y",labelcolor = "red")
+
+#Removendo todas as spines
+for ax in [ax1, ax2]:
+  for spine in ax.spines.values():
+    spine.set_visible(False)
+
+#Legendas e título
+fig.suptitle("Transações por hora x Percentual de Classe 1", fontweight = "bold", fontsize = 20)
+fig.subplots_adjust (top = 0.88) # ajustando o espaçamento
+ax1.legend(loc = "upper left", bbox_to_anchor = (0, 1.1))
+ax2.legend(loc = "upper right", bbox_to_anchor = (1, 1.1))
+
+plt.tight_layout()
+plt.show()
+```
+Na sequência, avaliamos a taxa de fraude por decil de Amount de forma isolada. O gráfico em linha evidencia com clareza a dinâmica do risco ao longo das faixas de valor: o primeiro decil apresenta a maior taxa relativa de fraude, seguindo-se uma queda acentuada nas faixas intermediárias e um aumento progressivo nas faixas mais altas. Em outras palavras, o risco é elevado nos valores muito baixos, atinge um vale no centro e volta a subir em transações de maior valor. Do ponto de vista operacional, isso indica que regras e modelos separados por faixa de valor — em especial para faixas extremas — tendem a ser mais eficazes do que uma regra única para todo o universo de transações.
+
+```{python}
+#Criando uma Feature de dia da semana
+Dia = dados["Time"].apply(lambda x: (x // 84600)).astype(int)
+
+#Inserindo após a coluna Hour
+dados.insert(loc = 2, column = "Day_of_week", value = Dia)
+```
+
+```{python}
+#Criando uma coluna com faixa de bins da feature  "Amount"
+#pd.qcut divide a coluna em faixais com base no quantis
+# q é o numero de observaçoes que sera divido
+# duplicates eliminada as duplicas, descartando faixas que contem o mesmo valores
+dados["amount_bin"] = pd.qcut(dados["Amount"], q = 10, duplicates = "drop")
+
+#Calcula a taxa de fraude bins
+fraud_rate_by_bin = dados.groupby("amount_bin", observed = True)["Class"].mean() * 100
+
+# Calcula a quantidade de transações possuem cada bins
+count_by_bin = dados.groupby("amount_bin", observed = True)["Class"].size()
+
+# Plotando um grafico de linha
+ax = fraud_rate_by_bin.plot(kind = "line", marker = "o")
+ax.set_facecolor("lightgray")
+ax.set_ylabel("Taxa de Fraude(%)")
+ax.set_xlabel("Faixa de Amount(decis)")
+ax.set_title("Taxa de Fraude por Decil de Amount", fontweight = "bold", fontsize = 20, pad = 20)
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+plt.tight_layout()
+plt.show()
+```
+Por fim, observamos a quantidade de transações junto com a taxa de fraude por decil de Amount. Esse gráfico combina barras (volume de transações) e linha (percentual de fraude), permitindo visualizar tanto a concentração de operações em valores intermediários quanto o comportamento de risco já observado nas extremidades. Embora as transações de valores baixos e altos sejam menos frequentes, sua taxa de fraude é significativamente maior, reforçando o papel crítico dessas faixas no desenho de políticas de prevenção.
+
+```{python}
+df_bin =pd.DataFrame({
+    "qtde": count_by_bin,
+    "taxa_fraude_%": fraud_rate_by_bin.round(4)
+})
+```
+
+```{python}
+
+#Plotando gráficos de barras
+fig, ax6 = plt.subplots(figsize = (10,6), facecolor = "lightgray")
+
+#barra de quantidade de transações
+ax6.bar(
+    df_bin.index.astype(str),
+    df_bin["qtde"],
+    color = "blue",
+    label = "Quantidade"
+        )
+
+ax6.set_xlabel("Faixa de Amount (decis)")
+ax6.set_ylabel("Quantidade de transações")
+ax6.tick_params(axis = "x", rotation = 45)
+
+#criando um segundo eixo para a taxa de fraude
+ax7 = ax6.twinx()
+ax7.plot(
+    df_bin.index.astype(str),
+    df_bin["taxa_fraude_%"],
+    color = "darkorange",
+    marker ="o",
+    label = "Taxa de Fraude(%)"
+)
+
+ax7.set_ylabel("Taxa de Fraude(%)")
+
+#Titulo
+plt.title("Quantidade e Taxa de Fraude por Decil de Amount", fontweight = "bold", fontsize = 20, pad = 10)
+
+#legendas
+ax6.legend(loc = "upper left")
+ax7.legend(loc = "upper right")
+
+plt.tight_layout()
+plt.show()
+```
+De forma integrada, essas análises mostram que o risco de fraude não está distribuído de maneira uniforme: ele varia tanto no tempo quanto em função do valor das transações. Para o negócio, esse resultado indica que estratégias de prevenção precisam considerar múltiplas dimensões — volume, horário e valor — em vez de tratar todos os casos de forma homogênea. Para a área de dados, os achados reforçam a importância de incorporar variáveis temporais e monetárias de forma segmentada nos modelos de detecção, pois elas capturam relações não lineares e interações relevantes para distinguir fraudes de transações legítimas.
+
+## Teste Estatístico
+
+### : ECDF(Empirical Cumulative Distribution Function)
+
+A Função de Distribuição Empírica Acumulada (ECDF – Empirical Cumulative Distribution Function) é uma técnica estatística que mostra, para cada valor possível de uma variável, a proporção acumulada de observações menores ou iguais a ele. Diferente de histogramas ou boxplots, a ECDF preserva toda a informação dos dados, permitindo uma visão completa da distribuição sem perda de detalhes. Isso a torna especialmente útil em análises de detecção de fraude, pois permite comparar de forma precisa como os valores de transações se distribuem entre classes distintas.
+
+
+```{python}
+#Chamando uma função
+def plot_ecdf_by_class(col):
+
+  #Separando os dados por classes
+  x0 = dados.loc[dados.Class == 0, col].dropna()
+  x1 = dados.loc[dados.Class == 1, col].dropna()
+
+  # Criando a função de distribuição acumulada
+  ec0, ec1 = ECDF(x0), ECDF(x1)
+
+  #definindo os eixos para a plotagem do gráfico
+  #criando 400 pontos espaçados igualmente
+  #entre o percentil 1% e 99%
+  xs = np.linspace(
+      np.percentile(dados[col], 1),
+      np.percentile(dados[col], 99),
+      400)
+
+  #Plotando a curva ECDF
+  plt.plot(xs, ec0(xs), label = "Class 0")
+  plt.plot(xs, ec1(xs), label = "Class 1")
+
+   #Customizando o gráfico, com titulo e nomes do eixos
+  plt.title(f"ECDF de {col} por Classe", fontweight = "bold", fontsize = 20, pad = 20)
+  plt.xlabel(col)
+  plt.ylabel("F(x)")
+  plt.legend()
+
+  sns.despine()
+  plt.show()
+
+plot_ecdf_by_class("Amount")
+```
+
+No gráfico acima, observamos a comparação da ECDF do valor das transações (__Amount__) entre as classes 0 (transações legítimas) e 1 (transações fraudulentas). Nota-se que a curva da classe 1 se mantém abaixo da classe 0 nos valores iniciais, indicando que transações fraudulentas tendem a se concentrar em valores ligeiramente mais altos do que as transações legítimas. À medida que os valores aumentam, as duas curvas se aproximam, sugerindo que, em faixas mais altas, a diferença entre fraudes e transações normais se reduz.
+
+A importância desse teste estatístico está em evidenciar diferenças sutis entre distribuições que poderiam passar despercebidas em análises tradicionais. Do ponto de vista de negócio, esse resultado sugere que pequenas variações no valor das transações já podem ser indicativas de risco, o que justifica incluir métricas derivadas de distribuição acumulada em modelos preditivos. Para estudos em ciência de dados, reforça-se a necessidade de técnicas estatísticas robustas para identificar padrões não triviais em dados desbalanceados.
+
+### Testes estatístico sobre variáveis numéricas
+
+Para avaliar se as variáveis numéricas apresentam diferenças significativas entre transações fraudulentas e não fraudulentas, foram aplicados dois testes: o Mann-Whitney U e a correlação ponto-biserial.
+
+O teste Mann-Whitney U é não paramétrico e verifica se duas distribuições independentes diferem de forma estatisticamente significativa. Ele é adequado para dados assimétricos, como os valores de transações financeiras. Já a correlação ponto-biserial mede a associação linear entre uma variável contínua e a variável binária de classe (fraude ou não fraude). Para ambos os testes, valores baixos de p-valor indicam que há evidências de diferença significativa entre as classes.
+
+A tabela abaixo resume os resultados obtidos para a variável Amount, após o ajuste dos p-valores pelo método de Benjamini-Hochberg para múltiplas comparações:
+
+
+```{python}
+#Pegando colunas de tipo numericos, armazenando todas as colunas desta caracteristica como uma lista
+n_cols = dados.select_dtypes(include="number").columns.tolist()
+
+# removendo a variavel "Class", para não comparar com ela mesmo
+n_cols = [c for c in n_cols if c != "Class"]
+
+# lista vazia para armazenagem dos dados
+rows = []
+
+# criando mascara booleana
+fraud = dados["Class"] == 1
+
+# criando um loop para pegar os valores
+for col in n_cols:
+  # pegando apenas valores com transaçoes fraudulentas
+  a = dados.loc[fraud, col]
+  # pegando apenas valores de transações nao fraudulentas
+  b = dados.loc[~fraud, col]
+
+  #pegando subamostragem para a velocidade
+  # se houver mais de 15000, utilizaremos apenas uma amostra
+  #random_state é para garantir a reprodutibilidade
+  a_s = a.sample(n = min(15000, len(a)), random_state= 70) if len(a.dropna()) > 15000 else a
+  b_s = b.sample(n = min(15000, len(b)), random_state = 70) if len(b.dropna()) > 15000 else b
+
+#Teste Mann-whitney
+  try:
+    #mannwhitneyu compara se as distribuiçoes de a_s e b_s são diferentes
+    # two-sided teste bilateral(verificando qualquer diferença)
+    mw_stat, mw_p = mannwhitneyu(a_s, b_s, alternative = "two_sided")
+
+  except:
+    mw_stat, mw_p = np.nan, np.nan
+# Correlação ponto-biseral
+  try:
+    #pointbiserialr mede a correlação entre a variavel continua e binária(class)
+    #pd_corr valor da correlaçao
+    #pb_p p-valor da correlaçao
+    pd_corr, pb_p = pointbiserialr(dados["Class"], dados[col])
+
+  except:
+    pd_corr, pb_p = np.nan, np.nan
+
+# Armazendando os resultados
+rows.append({"feature": col, "mw_p": mw_p, "pb_corr": pd_corr, "pb_p": pb_p})
+
+#Transformando em DataFrame
+tests = pd.DataFrame(rows)
+
+# ajustando p-values oara multiplos testes
+#multipletests corrige os p-values usando fdr, controlando erro tipo 1
+tests["mw_p_adj"] = multipletests(tests["mw_p"].fillna(1.0), method="fdr_bh")[1]
+tests["pb_p_adj"] = multipletests(tests["pb_p"].fillna(1.0), method="fdr_bh")[1]
+
+# ordenar pelas correlações mais forte
+tests = tests.sort_values(by="pb_corr", key=lambda s: s.abs(), ascending=False)
+
+tests.head()
+```
+
+Os resultados mostram que:
+
+* O teste Mann-Whitney U não pôde ser computado devido ao forte desbalanceamento dos dados, que fez com que a classe minoritária (fraudes) não tivesse amostras suficientes para a comparação adequada.
+
+* A correlação ponto-biserial foi positiva, mas fraca (≈ 0,0056), indicando que Amount tem uma relação muito pequena com a variável alvo.
+
+* Apesar da correlação ser baixa, o p-valor corrigido foi significativo (0,0027), sugerindo que essa diferença, embora pequena, é estatisticamente confiável.
+
+Em síntese, a variável Amount apresenta diferenças estatisticamente significativas entre transações fraudulentas e não fraudulentas, mas a força da relação é baixa. Isso significa que Amount isoladamente não discrimina bem as classes, mas pode contribuir em conjunto com outras variáveis para aumentar a capacidade preditiva de modelos de detecção de fraude.
+
+## Preparação de Dados e Engenharia de Features
+
+Nesta etapa, é fundamental definir claramente a variável explicativa (feature) e a variável alvo (target). As features são os atributos que utilizaremos para prever determinado resultado, enquanto a variável alvo representa a informação que se deseja prever.
+
+Além disso, os dados foram divididos em conjuntos de treino e teste (e, quando necessário, validação). Essa separação é essencial para evitar o chamado data leakage, que ocorre quando o modelo tem acesso a informações de forma antecipada. O acesso precoce pode levar o modelo a memorizar os dados, apresentando bom desempenho durante o treinamento, mas falhando na previsão de novos dados. A separação garante uma avaliação justa, refletindo a capacidade real de generalização do modelo.
+
+### Escalonamento de Dados
+
+```{python}
+#Criando os DataFrame X(features) e y (target)
+X = dados.drop(["Class", "Time", "amount_bin"], axis = 1)
+y = dados["Class"]
+```
+
+```{python}
+#Separando  os dados entre treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                    test_size = 0.20,
+                                                    shuffle = True,
+                                                    stratify = y,
+                                                    random_state = 88)
+```
+
+Para padronização das features, foi utilizado o RobustScaler, que se mostra mais robusto em relação a outliers em comparação ao StandardScaler. O RobustScaler utiliza a mediana e o intervalo interquartil (IQR) ao invés da média e do desvio padrão, apresentando as seguintes características:
+
+```{python}
+#criando uma instância do RobustScaler
+scaler = RobustScaler()
+
+#instanciando mmais uma vez para testar diferentes reaçoes do modelo
+scaler_all = RobustScaler()
+
+X_train = X_train.copy()
+X_test = X_test.copy()
+
+#normalizando a coluna "Amount" no DataFrame
+X_train["Amount"] = scaler.fit_transform(X_train[["Amount"]])
+
+#normalizando a coluna "Amount" no DataFrame
+X_test["Amount"] = scaler.transform(X_test[["Amount"]])
+
+#testando uma normalizaçao de todo o conjunto de dados de treino e nao so da feature "Amount"
+X_train_scaler = scaler_all.fit_transform(X_train)
+
+#transforme no conjunto de teste
+X_test_scaler = scaler_all.transform(X_test)
+```
+
+* Ignora a maioria dos valores atípicos;
+
+* Recomendado para datasets com muitos outliers;
+
+* Beneficia algoritmos sensíveis a outliers, como K-Means e Regressão Linear.
+
+### Balanceamento de Classes
+
+Para lidar com desbalanceamento de classes, aplicou-se o SMOTE (Synthetic Minority Over-sampling Technique). Esta técnica cria amostras sintéticas da classe minoritária com base nos vizinhos mais próximos, evitando duplicação de registros existentes. O uso do SMOTE contribui para que o modelo aprenda adequadamente as características de todas as classes, melhorando a performance em datasets desbalanceados.
+
+```{python}
+#criando uma instância da classe SMOTE
+smote = SMOTE(random_state = 88)
+
+#Aplicando a instancia nos dados de treino
+X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
+
+#aplicando a instancia nos dados de treino, do segundo modo de normalizaçao
+X_train_smote, y_train_smote = smote.fit_resample(X_train_scaler, y_train)
+```
+
+# Machine Learning e as Métricas de Avaliação de Desenpenho.
+
+Neste capítulo, serão apresentados os algoritmos testados neste estudo, assim como a comparação de seus resultados utilizando métricas estatísticas robustas (PR AUC, Recall e F1-Score).
+
+Para fins de análise econômica, foi criada uma função simplificada, desenvolvida para estimar o impacto financeiro, o ROI (Retorno sobre Investimento) e a taxa de economia de cada modelo. Embora reconheçamos que diversos outros fatores possam influenciar os resultados financeiros, essa função fornece um norte para compreender o impacto real dos modelos nas finanças da empresa e auxilia na comparação prática entre eles.
+
+## Métricas de Avaliação Estatística
+
+Para avaliar um modelo de Machine Learning, é fundamental compreender quais métricas devem ser utilizadas. Apoiar-se em uma métrica inadequada pode colocar em risco os resultados pretendidos. Existem diversas técnicas de avaliação; abaixo, listamos as principais:
+
+* __Accuracy(Acurácia)__: representa a proporção de previsões corretas em relação ao total de observações. É importante destacar que, em datasets desbalanceados, a acurácia pode ser enganosa, pois o modelo tende a prever corretamente apenas a classe majoritária, mascarando o desempenho real sobre a classe minoritária.
+
+* __ROC AUC(Área sob a curva ROC)__: mede a capacidade do modelo de separar corretamente as classes. Essa métrica é geralmente acompanhada da Curva ROC, que plota a Taxa de Verdadeiros Positivos (Recall) versus a Taxa de Falsos Positivos (FPR). A área sob a curva (AUC) varia de 0,5 (modelo aleatório) a 1,0 (modelo perfeito).
+
+* __PR AUC(Área sob a Curva Precision-Recall)__: Representa a área sob a curva Precision-Recall, sendo ideal para problemas muito desbalanceados, onde a classe minoritária é de maior interesse.
+
+* __Recall (Sensibilidade)__: Proporção de verdadeiros positivos corretamente identificados pelo modelo. Essa métrica é essencial quando se deseja não deixar de detectar casos críticos, como fraudes.
+
+* __Precision (Precisão)__: Proporção de previsões positivas que são realmente verdadeiras. Ajuda a reduzir falsos positivos, evitando alertas desnecessários.
+
+* __F1-Score__: Média harmônica entre Precision e Recall, utilizada para equilibrar a detecção de positivos e a quantidade de falsos positivos. É especialmente útil em problemas desbalanceados, onde tanto a detecção quanto a precisão das previsões são críticas
+
+Diante de todas as métricas apresentadas e após uma análise cuidadosa, optou-se por utilizar a PR AUC como principal métrica de avaliação, especialmente por sua robustez em problemas desbalanceados. No entanto, todas as outras métricas continuam sendo relevantes, sendo essencial avaliar o modelo de forma abrangente, considerando diferentes perspectivas de desempenho para garantir resultados confiáveis e consistentes.
+
+## Métricas de Avaliação econômicas
+
+Para auxiliar na avaliação dos modelos, serão utilizadas métricas financeiras, como ROI (Retorno sobre Investimento), taxa de economia e impacto financeiro. Para isso, utilizamos a média dos valores da coluna Amount da classe 1 (fraudes), que é de US$ 122,21, como referência do valor médio perdido por fraude.
+
+Além disso, foi definido um valor hipotético de US$ 50,00 para o custo da campanha de prevenção à fraude, garantindo que o investimento seja menor que a perda média por fraude e permitindo avaliar o retorno econômico das ações propostas pelo modelo.
+
+* __ROI (Retorno sobre Investimento)__: O ROI mede o retorno obtido em relação ao custo da ação de prevenção à fraude. É calculado como:
+
+$$ ROI = \frac{\text{Benefício líquido}}{\text{Custo da campanha}} $$
+
+* Benefício líquido: valor economizado ao prevenir fraudes menos o custo da campanha.
+
+* Um ROI maior que 1 indica que o investimento foi lucrativo; valores menores que 1 indicam que o custo da ação superou o benefício obtido.
+
+* __Taxa de Economia__: A taxa de economia indica a proporção da perda financeira evitada pelo modelo em relação à perda total possível com fraudes. É uma métrica percentual que mostra quanto da fraude o modelo conseguiu prevenir, considerando o custo da campanha.
+
+* __Impacto Financeiro__: O impacto financeiro representa o valor líquido economizado ao aplicar o modelo, considerando tanto os valores de fraude prevenidos quanto os custos da campanha de prevenção.
+
+* Calcula-se como:
+
+
+\[
+\text{Impacto Financeiro} = (\text{Fraudes prevenidas} \times \text{Valor médio da fraude}) - \text{Custo da campanha}
+\]
+
+* Permite entender quanto o modelo efetivamente contribuiu para reduzir perdas financeiras, auxiliando na tomada de decisão sobre a viabilidade econômica das ações.
+
+
+```{python}
+#Função com as metricas necessarias para avaliar o modelo
+def metricas (modelo,y_true, y_pred, y_prob):
+  print("Métricas de Avaliações do Modelo")
+  print(f"{modelo}")
+  print("Acurácia:", accuracy_score(y_true, y_pred))
+  print("ROC Auc:", roc_auc_score(y_true, y_prob ))
+  print("PR AUC:", average_precision_score(y_true, y_prob))
+  print("Matriz de confusão:\n", confusion_matrix(y_true, y_pred))
+  print(classification_report(y_true, y_pred))
+
+     #Calculo da matriz de confusão
+  cm = confusion_matrix(y_true, y_pred)
+
+  #Criando o subplots com 2 linhas e 2 colunas
+  fig, ax =plt.subplots(2, 2, figsize = (12, 10), facecolor = "lightgray")
+
+  #ajustes geral do grafico
+  fig.subplots_adjust(hspace = 0.7, wspace = 0.7)
+  fig.suptitle(f"Métricas de Avaliações do {modelo}",fontsize = 20, fontweight = "bold", y = 1.02)
+  #Ajustando as cores do heatmap
+  cmap = ListedColormap(["blue", "darkorange"])
+  #Criando o grafico Heatmap
+  sns.heatmap(
+      cm,
+      annot = True,
+      fmt = "d",
+      cmap = cmap,
+      cbar = False,
+      xticklabels = ["Não Fraude", "Fraude"],
+      yticklabels = ["Não Fraude", "Fraude"],
+      ax = ax[0, 0]
+
+  )
+
+  ax[0, 0].set_title(f"Matriz de Confusão da\n {modelo}", fontweight = "bold",fontsize = 14, pad = 10, color = "red")
+  ax[0, 0].set_xlabel("Previsão")
+  ax[0, 0].set_ylabel("Real")
+
+  #calcular as taxas de verdadeiros e falsos positivo
+  fpr, tpr, thresholds = roc_curve(y_true, y_prob)
+  roc_auc = auc(fpr, tpr)
+
+  #Grafico da curva ROC
+  ax[0, 1].plot(fpr, tpr, color = "darkorange", lw =2, label = f"Curva ROC(área = {roc_auc:.2f})")
+  ax[0, 1].plot([0, 1], [0, 1], color = "navy", lw =2, linestyle = "--")
+  ax[0, 1].set_xlim([0.0, 1.0])
+  ax[0, 1].set_ylim([0.0, 1.05])
+  ax[0, 1].set_xlabel("Taxa de Falsos Positivos(FPR)")
+  ax[0, 1].set_ylabel("Taxa de Verdadeiros Positivos(TPR)")
+  ax[0, 1].set_title(f"Curva ROC do {modelo}", fontweight = "bold", fontsize = 14, pad = 10, color = "red")
+  ax[0, 1].legend(loc = "lower right")
+
+  #Calculando a probabilidade
+  probabilidades_classe_0 = y_prob[y_true == 0]
+  probabilidades_classe_1 = y_prob[y_true == 1]
+
+    # reduzindo a quantidade de pontos para poupar recursos computacionais
+  tam_amostra = 800000
+
+  if len(probabilidades_classe_0) > tam_amostra:
+    probabilidades_classe_0 = np.random.choice(probabilidades_classe_0, size = tam_amostra, replace = False)
+
+  if len(probabilidades_classe_1) > tam_amostra:
+    probabilidades_classe_1 = np.random.choice(probabilidades_classe_1, size = tam_amostra, replace = False)
+
+  #criando o grafico de histplot de probabilidade
+  sns.histplot(
+      probabilidades_classe_0,
+      color ="blue",
+      kde = True,
+      stat = "density",
+      bins = 50,
+      label = "Não Fraude",
+      binwidth = 0.05,
+      alpha = 0.6,
+      ax = ax[1, 0]
+  )
+
+  sns.histplot(
+      probabilidades_classe_1,
+      color = "darkorange",
+      kde = True,
+      stat ="density",
+      bins = 50,
+      label = "Fraude",
+      binwidth = 0.05,
+      alpha = 0.6,
+      ax = ax[1, 0]
+  )
+
+  ax[1, 0].set_title(f"Distribuição de Probabilidade \ndo Modelo {modelo}", fontweight = "bold", fontsize = 14, pad = 10, color = "red")
+  ax[1, 0].set_xlabel("Probabilidade de Evasão")
+  ax[1, 0].set_ylabel("Densidade")
+  ax[1, 0].legend(loc = "lower right")
+
+  #Plotar a curva de densidade cumulativa
+  sns.ecdfplot(probabilidades_classe_0, label = "Não Fraude", color = "blue", ax = ax[1, 1])
+  sns.ecdfplot(probabilidades_classe_1, label = "Fraude", color = "darkorange", ax = ax[1, 1])
+
+  ax[1, 1].set_xlabel("Probabilidade")
+  ax[1, 1].set_ylabel("Proporçao Acumulada")
+  ax[1, 1].set_title(f"Curva de Densidade Cumulativa(CDF)", fontweight = "bold", fontsize = 14, pad = 10, color = "red")
+
+  for subplot in [ax[0,0],ax[0,1], ax[1,0], ax[1, 1]]:
+
+    subplot.spines["top"].set_visible(False)
+    subplot.spines["right"].set_visible(False)
+
+  plt.tight_layout()
+  plt.show()
+```
+
+
+```{python}
+def curva_pr_auc(modelo,y_true, y_prob):
+  #Calculando os valores para a curva PR
+  precision, recall, _ = precision_recall_curve(y_true, y_prob)
+
+  #Calculando o Score de Average Precision(PR AUC)
+  ap_score = average_precision_score(y_true, y_prob)
+
+  #Plotando o Gráfico
+  plt.figure(figsize = (8,6), facecolor= "lightgray")
+  plt.plot(recall,
+          precision,
+          color = "darkorange",
+          lw = 2,
+          label = f"Curva PR(área = {ap_score:.3f})"
+          )
+
+  plt.xlabel("Recall")
+  plt.ylabel("Precisão")
+  plt.title(f"Curva Precison-Recall do modelo \n{modelo}",
+            fontweight = "bold", fontsize = 20, pad = 10)
+  plt.legend(loc = "lower left")
+
+  sns.despine()
+
+  plt.show()
+```
+
+
+```{python}
+def simulacao_custo_fraude(y_true, y_pred, custo_fp = 50, custo_fraude = 122.21):
+  """
+  saída:
+  -Tabela Principal: fp, fn, vp + linha total de  Impacto liquido
+  -Tabela Métricas financeiras : ROI, taxa de Economia, Custo por RN
+
+  """
+  tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
+  #Quantidades
+  quantidade = [fp, fn, tp]
+
+  #Custo da campanha(negativo para FP)
+  custo_campanha = [-fp * custo_fp, 0, 0]
+
+  #Fraude Evitada(vp)
+  fraude_ev = [0, 0, tp * custo_fraude]
+
+  #fraude não Evitada(FN, negativo)
+  fraude_perdida = [0, - fn * custo_fraude, 0]
+
+  #Impacto líquido = fraude evitada - custo da campanha - fraude não evitada
+  impacto_liquido = [fraude_ev[i] + custo_campanha[i] + fraude_perdida[i] for i in range(3)]
+
+  #Tabela Principal
+  df_principal = pd.DataFrame({
+      "Quantidade": quantidade,
+      "Custo Campanha(R$)": [f"R${x:,.2f}" for x in custo_campanha],
+      "Fraude Evitada(R$)": [f"R${x: ,.2f}" for x in fraude_ev],
+      "Fraude Não Evitada(R$)": [f"R${x: ,.2f}" for x in fraude_perdida],
+      "Impacto Líquido(R$)": [f"R$ {x: ,.2f}" for x in impacto_liquido]
+  }, index = ["FP", "FN", "VP"])
+
+  #Linha Total
+  total_quantidade = sum(quantidade)
+  total_custo_campanha = sum(custo_campanha)
+  total_fraude_ev = sum(fraude_ev)
+  total_fraude_perdida = sum(fraude_perdida)
+  total_impacto = sum(impacto_liquido)
+
+  df_principal.loc["Total"] = [
+      total_quantidade,
+      f"R$ {total_custo_campanha:,.2f}",
+      f"R$ {total_fraude_ev:,.2f}",
+      f"R$ {total_fraude_perdida:,.2f}",
+      f"R$ {total_impacto:,.2f}"
+  ]
+
+# Métricas financeiras derivadas
+  custo_medio_fp = (fp * custo_fp / fp) if fp > 0 else 0
+  roi = ((tp * custo_fraude) - (fp * custo_fp)) / (fp * custo_fp) if fp > 0 else None
+  taxa_economia = (tp * custo_fraude) / ((tp * custo_fraude) + (fn * custo_fraude)) if (tp+fn)>0 else None
+  custo_por_fn = (-fn * custo_fraude / fn) if fn > 0 else 0
+
+  df_metricas = pd.DataFrame({
+    "ROI (%)": [f"{roi*100:.1f}%" if roi is not None else "-"],
+    "Taxa Economia (%)": [f"{taxa_economia*100:.1f}%" if taxa_economia is not None else "-"],
+    "Custo por FN (R$)": [f"R$ {custo_por_fn:,}"]
+}, index=["Métricas Financeiras"])
+
+  return df_principal, df_metricas
+```
+
+## Regressão Logística
+
+A regressão logística é um modelo estatístico utilizado para prever a probabilidade de ocorrência de um evento binário (sim/não, verdadeiro/falso) com base em uma ou mais variáveis independentes.
+
+Ela transforma a relação entre as variáveis em uma probabilidade entre 0 e 1 utilizando a função logit, definida pela seguinte fórmula:
+
+$\text{logit}(p) = \log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \cdots + \beta_n X_n$
+
+Onde:
+* *p* é a probabilidade do evento ocorrer;
+
+* $X_1$, $X_2$,...., $X_n$ são as variáveis independentes;
+
+* $\beta_1$, $\beta_2$,...... $\beta_n$ são  os coeficientes estimados pelo método de máximo verossimilhança para obter o melhor ajuste do modelo.
+
+O resultado final representa a chance de ocorrência do evento, sendo que valores acima de 0,5 são normalmente classificados como ocorrência do evento, e valores abaixo de 0,5 como ausência do evento.
+
+No estudo foram avaliados três modelos de regressão logística, cada um com diferentes configurações e conjuntos de features. O objetivo foi comparar o desempenho de cada modelo na detecção de fraudes, utilizando as métricas estatísticas e financeiras apresentadas anteriormente (PR AUC, Recall, F1-Score, ROI, impacto financeiro e taxa de economia).
+
+A seguir, são apresentados os resultados de cada modelo, destacando suas diferenças de performance e eficácia na prevenção de fraudes.
+
+```{python}
+#Modelo de Regressao Logística com os dados que na etapa anterior,
+#foram padronizado  apenas na variavel amount de treino
+regressao_logistica = LogisticRegression(max_iter = 1500,random_state = 70)
+regressao_logistica.fit(X_train_bal, y_train_bal)
+```
+
+```{python}
+#Realizando as prediçoes
+y_predict_regressao_logistica = regressao_logistica.predict(X_test)
+y_prob_regressao_logistica = regressao_logistica.predict_proba(X_test)[:, 1]
+
+metricas("Regressão Logistica", y_test, y_predict_regressao_logistica, y_prob_regressao_logistica )
+```
+
+```{python}
+curva_pr_auc("Regressão Logistica", y_test, y_prob_regressao_logistica)
+```
+
+
+```{python}
+df_principal, df_metricas = simulacao_custo_fraude(y_test, y_predict_regressao_logistica )
+
+display(df_principal)
+```
+
+
+```{python}
+display(df_metricas)
+```
+
+Acima, foi aplicada a regressão logística utilizando o RobustScaler apenas na feature Amount.
+Abaixo, a mesma regressão logística foi treinada aplicando o RobustScaler em todas as features, permitindo observar o impacto da padronização completa no desempenho do modelo.
+
+
+```{python}
+#Instanciando a regressão losgistica que na etapa anterior
+#teve todas as suas Features padronizadas
+logistica_regressao = LogisticRegression(max_iter = 1500, random_state= 70)
+logistica_regressao.fit(X_train_smote, y_train_smote)
+```
+
+
+```{python}
+y_predict_logistica = logistica_regressao.predict(X_test_scaler)
+y_prob_logistica = logistica_regressao.predict_proba(X_test_scaler) [:, 1]
+
+metricas("Logistic Regression", y_test, y_predict_logistica, y_prob_logistica)
+```
+
+
+```{python}
+curva_pr_auc("Logistic Regression", y_test, y_prob_logistica)
+```
+
+
+```{python}
+df_principal_rg, df_metricas_rg = simulacao_custo_fraude(y_test, y_predict_logistica)
+display(df_principal_rg)
+```
+
+
+```{python}
+display(df_metricas_rg)
+```
+
+Após os dois modelos anteriores, aplicamos o HalvingGridSearch, um método de busca de hiperparâmetros mais eficiente que o GridSearch tradicional, pois vai eliminando combinações piores a cada iteração e focando nas melhores. Dessa forma, conseguimos encontrar um ajuste mais otimizado para o modelo logístico, sem a necessidade de testar exaustivamente todas as combinações possíveis.
+
+
+```{python}
+# Definindo a grade de parâmetros (agora uma lista de dicionários)
+param_grid = [
+    {
+        "C": [0.01, 0.1, 0.5, 1, 10], # Ajustei a ordem, mas não é obrigatório
+        "solver": ["liblinear", "saga"],
+        "penalty": ["l1", "l2"]
+    },
+    {
+        "penalty": ["l2", None],
+        "solver": ["lbfgs"], # Corrigido para 'lbfgs'
+        "C": [0.01, 0.3, 1, 10]
+    },
+    {
+        "penalty": [None],
+        "solver": ["saga"],
+        "C": [1]
+    }
+]
+
+# Instanciando o modelo
+reg_log = LogisticRegression(max_iter=1500, random_state=70)
+
+# Instanciando o Grid Search
+log_search = HalvingGridSearchCV(
+      estimator= reg_log,
+      param_grid= param_grid,
+      cv=3,
+      factor = 2,
+      scoring="average_precision",
+      n_jobs=-1
+  )
+
+# Rodando o fit
+log_search.fit(X_train_bal, y_train_bal)
+
+
+```
+
+
+```{python}
+#Instanciando o melhor modelo(dos paramentros do gridsearch)
+best_log_reg = LogisticRegression(C =0.03, solver = "lbfgs", penalty= None, max_iter = 1500, random_state= 70 )
+#Treinando o modelo
+best_log_reg.fit(X_train_bal, y_train_bal)
+
+#coletando as previsões
+y_predict_best_log = best_log_reg.predict(X_test)
+y_prob_best_log = best_log_reg.predict_proba(X_test)[:, 1]
+
+metricas("Regressão Logistica Otimizado", y_test, y_predict_best_log, y_prob_best_log)
+```
+
+
+```{python}
+curva_pr_auc("Regressão Logistica Otimizado", y_test, y_prob_best_log)
+```
+
+
+```{python}
+df_principal_rgotimo, df_metricas_rgotimo = simulacao_custo_fraude(y_test, y_predict_best_log)
+display(df_principal_rgotimo)
+```
+
+
+```{python}
+display(df_metricas_rgotimo)
+```
+
+## Random Forest
+
+O Random Forest é um algoritmo de aprendizado de máquina baseado em um conjunto de árvores de decisão. Ele constrói uma “floresta” de múltiplas árvores e combina os resultados obtidos por elas, resultando em maior precisão e robustez em comparação com uma única árvore de decisão.
+
+Cada árvore é treinada a partir de amostras geradas por bootstrap (amostragem com reposição) e, em cada divisão de nó, o algoritmo considera apenas um subconjunto aleatório de variáveis. Essa estratégia aumenta a diversidade entre as árvores, reduzindo a variância do modelo e mitigando problemas de overfitting.
+
+
+```{python}
+#Instanciando  e treinando o modelo
+random_forest = RandomForestClassifier(max_depth= 5,
+                                       random_state = 70)
+random_forest.fit(X_train_smote, y_train_smote)
+
+#Previsões
+y_predict_rf = random_forest.predict(X_test_scaler)
+y_prob_rf =random_forest.predict_proba(X_test_scaler)[:, 1]
+
+metricas("Random Forest", y_test, y_predict_rf, y_prob_rf)
+```
+
+
+```{python}
+curva_pr_auc("Random Forest", y_test, y_prob_rf )
+```
+
+
+```{python}
+df_principal_rf, df_metricas_rf = simulacao_custo_fraude(y_test, y_predict_rf)
+display(df_principal_rf)
+```
+
+
+```{python}
+display(df_metricas_rf)
+```
+
+Para otimizar o desempenho do modelo Random Forest, aplicamos o HalvingGridSearch, uma técnica de busca de hiperparâmetros que avalia diferentes combinações de forma iterativa, reduzindo progressivamente o número de candidatos e mantendo apenas os mais promissores.
+
+Esse procedimento permite encontrar configurações mais adequadas para o modelo sem a necessidade de testar exaustivamente todas as combinações possíveis, tornando o processo mais eficiente.
+
+
+```{python}
+# parametros para otimizaçao do modelo
+param_grid = {
+    "n_estimators": [25, 50,100],  #numero de arvore da floresta
+    "max_depth": [3, 5, 10],       # profundidade maxima de cada arvore
+    "min_samples_split": [2, 4, 5] # numero minimo de amostras para dividir um nó
+
+}
+
+#Instanciando o modelo
+random_forest_model = RandomForestClassifier(random_state = 70)
+
+#instanciar o Grid Search
+rf_grid_search = HalvingGridSearchCV(
+    estimator = random_forest_model,
+    param_grid = param_grid,
+    cv = 3,
+    factor = 2,
+    n_jobs= -1,
+    verbose = 1,
+    scoring = "average_precision"
+)
+
+#rodar a otimizaçao nos dados de treinos balanceados
+rf_grid_search.fit(X_train_smote, y_train_smote)
+```
+
+
+```{python}
+#Usando o melhor modelo para fazer as previsões no conjunto de testes
+best_random_forest = rf_grid_search.best_estimator_
+y_predict_best_rf = best_random_forest.predict(X_test_scaler)
+y_prob_best_rf = best_log_reg.predict_proba(X_test_scaler)[: , 1]
+
+metricas("Random Forest Otimizado", y_test, y_predict_best_rf, y_prob_best_rf)
+```
+
+
+```{python}
+curva_pr_auc("Random Forest Otimizado", y_test, y_prob_best_rf)
+```
+
+
+```{python}
+df_principal_rf_otimo, df_metricas_rfotimo = simulacao_custo_fraude(y_test, y_predict_best_rf)
+display(df_principal_rf_otimo)
+```
+
+
+```{python}
+display(df_metricas_rfotimo)
+```
+
+## Gradient Boosting
+
+O Gradient Boosting é uma técnica de aprendizado de máquina aplicada a problemas de classificação e regressão, que constrói um modelo robusto a partir da combinação iterativa de vários modelos fracos, geralmente árvores de decisão. A cada iteração, o algoritmo ajusta um novo modelo para corrigir os erros residuais do modelo anterior, otimizando a função de perda por meio do gradiente, o que resulta em melhoria contínua na precisão das predições.
+
+
+```{python}
+# instanciando o modelo
+gb_model = GradientBoostingClassifier(
+    n_estimators= 100,
+    learning_rate = 0.2,
+    max_depth = 5,
+    random_state= 70
+)
+
+#Utilizando o cross validation
+scores = cross_val_score(
+    gb_model,
+    X_train_smote,
+    y_train_smote,
+    cv = 3,
+    scoring = "average_precision"
+)
+
+gb_model.fit(X_train_smote, y_train_smote)
+```
+
+
+```{python}
+y_predict_gb_model = gb_model.predict(X_test_scaler)
+y_prob_gb_model = gb_model.predict_proba(X_test_scaler)[: , 1]
+
+metricas("Gradient Boosting", y_test, y_predict_gb_model, y_prob_gb_model)
+```
+
+
+```{python}
+curva_pr_auc("Gradient Boosting", y_test, y_prob_gb_model)
+```
+
+
+```{python}
+df_principal_gb, df_metricas_gb = simulacao_custo_fraude(y_test, y_predict_gb_model)
+display(df_principal_gb)
+```
+
+
+```{python}
+display(df_metricas_gb)
+```
+
+## XGBoost
+
+O XGBoost (Extreme Gradient Boosting) é uma implementação avançada e otimizada do algoritmo de Gradient Boosting, amplamente utilizada em aprendizado de máquina. Ele constrói um modelo robusto e preciso combinando várias árvores de decisão “fracas” de forma sequencial, onde cada nova árvore corrige os erros residuais das anteriores. Para isso, utiliza a descida do gradiente na otimização da função de perda. Além de sua capacidade de gerar predições mais acuradas, o XGBoost se destaca pela eficiência computacional, controle de overfitting e escalabilidade, tornando-o especialmente adequado para grandes volumes de dados e aplicações em ambientes gerenciais que exigem resultados confiáveis.
+
+
+```{python}
+xgb_model = XGBClassifier(
+    n_estimators = 100,
+    learning_rate = 0.2,
+    max_depth = 5,
+    subsample = 0.6,
+    colsample_bytree = 0.8,
+    random_state = 70,
+    eval_metric = "logloss"
+
+)
+
+scores_xgb = cross_val_score(
+    xgb_model,
+    X_train_scaler,
+    y_train,
+    cv = 3,
+    scoring = "average_precision"
+)
+
+xgb_model.fit(X_train_smote, y_train_smote)
+```
+
+
+```{python}
+#Avaliando o modelo
+y_pred_xg = xgb_model.predict(X_test_scaler)
+y_proba_xg = xgb_model.predict_proba(X_test_scaler)[:, 1]
+
+metricas("XGBoost", y_test, y_pred_xg, y_proba_xg)
+```
+
+
+```{python}
+curva_pr_auc("XGBoost", y_test, y_proba_xg)
+```
+
+
+```{python}
+df_principal_xgb, df_metricas_xgb = simulacao_custo_fraude(y_test, y_pred_xg)
+display(df_principal_xgb)
+```
+
+
+```{python}
+display(df_metricas_xgb)
+```
+
+```{python}
+#Instanciando os modelos
+cv = StratifiedKFold(
+    n_splits = 10,
+    shuffle = True,
+    random_state = 70
+)
+```
+## Voting Classifier
+
+O Voting Classifier é um método de ensemble em aprendizado de máquina que combina múltiplos algoritmos base para gerar uma predição final mais robusta e frequentemente mais precisa do que qualquer modelo individual. Ele funciona reunindo classificações diferentes (como árvore de decisão, SVM, regressão logística, Gradient Boosting e XGBoost Classifier) e tomando decisões por maioria de votos ou pela média das probabilidades de cada classe. Neste modelo específico, o Voting Classifier foi treinado utilizando apenas Gradient Boosting e XGBoost, aproveitando a robustez e precisão desses algoritmos para melhorar o desempenho do ensemble.
+
+
+```{python}
+# O primeiro é o modelo XGBoost
+xgb_model_voting = XGBClassifier(
+    n_estimators = 100,
+    learning_rate = 0.2,
+    max_depth = 5,
+    subsample = 0.6,
+    colsample_bytree = 0.8,
+    random_state = 70,
+    eval_metric = "logloss"
+
+)
+
+#o segundo modelo é o Gradient Boosting
+gb_model_voting = GradientBoostingClassifier(
+    n_estimators= 100,
+    learning_rate = 0.2,
+    max_depth = 5,
+    random_state= 70
+)
+
+#Criando o Voting Classifier
+# argumento soft, para uma votaçao suave
+
+ensemble_voting_soft = VotingClassifier(
+    estimators = [
+        ("XGBoost", xgb_model_voting),
+        ("Gradient Boosting",gb_model_voting )
+    ],
+    voting = "soft",
+    n_jobs = -1
+)
+
+#Aplicando o Cross-Validation
+scores_vot = cross_val_score(
+    ensemble_voting_soft,
+    X_train_scaler,
+    y_train,
+    cv = cv,
+    scoring = "average_precision"
+
+)
+
+#Treinando o modelo com os dados de treinos balanceados
+ensemble_voting_soft.fit(X_train_smote, y_train_smote)
+
+#Fazer previsões no conjunto de teste e avaliar
+
+y_prob_ensemble = ensemble_voting_soft.predict_proba(X_test_scaler)[:, 1]
+
+#Definir o threshold
+threshold = 0.4
+
+#Transformando probabibilidades em classes usando o threshold
+y_predict_ensemble = (y_prob_ensemble >= threshold).astype(int)
+
+metricas("Voting Classifier", y_test, y_predict_ensemble, y_prob_ensemble)
+```
+
+
+```{python}
+curva_pr_auc("Voting Classifier", y_test, y_prob_ensemble)
+```
+
+
+```{python}
+df_principal_vot, df_metricas_vot = simulacao_custo_fraude(y_test, y_predict_ensemble)
+display(df_principal_vot)
+```
+
+
+```{python}
+display(df_metricas_vot)
+```
+
+## Stacking Classifier
+
+O Stacking Classifier é uma técnica de ensemble em aprendizado de máquina que combina múltiplos algoritmos de classificação para formar um modelo ainda mais robusto e preciso. Diferentemente do Voting Classifier, o empilhamento utiliza um meta-classificador para aprender a combinar os modelos base, identificando padrões que cada modelo individual não consegue capturar sozinho. Neste caso específico, o modelo foi treinado utilizando Gradient Boosting e XGBoost como modelos base, e regressão logística como meta-classificador. É importante ressaltar que, devido a limitações computacionais, os testes foram realizados com uma amostra representativa, respeitando o equilíbrio entre as classes.
+
+
+```{python}
+# --- 1. Selecionando as amostra dos dados ---
+# Define o tamanho da amostra (no caso 10% dos dados originais)
+sample_size = 0.08
+
+# Selecionando uma amostra aleatória e estratificada dos dados de treino originais
+X_train_sample, _, y_train_sample, _ = train_test_split(
+    X_train_scaler, y_train, train_size=sample_size, random_state=70, stratify=y_train
+)
+
+# Selecionando uma amostra dos dados balanceados (SMOTE)
+X_train_smote_sample, _, y_train_smote_sample, _ = train_test_split(
+    X_train_smote, y_train_smote, train_size=sample_size, random_state=70, stratify=y_train_smote
+)
+
+print(f"Tamanho original do conjunto de treino: {len(X_train_scaler)}")
+print(f"Tamanho da amostra de treino: {len(X_train_sample)}")
+print("-" * 30)
+
+
+# --- 2. Configurarando e instanciando os modelos ---
+xgb_model_stack = XGBClassifier(
+    n_estimators=80,
+    learning_rate=0.2,
+    max_depth=4,
+    subsample=0.6,
+    colsample_bytree=0.8,
+    random_state=70,
+    eval_metric="logloss"
+)
+
+gb_model_stack = GradientBoostingClassifier(
+    n_estimators=80,
+    learning_rate=0.2,
+    max_depth=4,
+    random_state=70,
+)
+
+meta_model = LogisticRegression(
+    solver="lbfgs",
+    max_iter= 800,
+    random_state=70
+)
+
+stacking_clf = StackingClassifier(
+    estimators=[
+        ("XGBoost", xgb_model_stack),
+        ("GradientBoosting", gb_model_stack)
+    ],
+    final_estimator=meta_model,
+    cv=3,
+    n_jobs=-1,
+    passthrough=True
+)
+
+
+# --- 3. Cross-Validation e Treinamento com a amostra ---
+cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=70)
+
+print("Iniciando a validação cruzada com a amostra...")
+scores_stack = cross_val_score(
+    stacking_clf,
+    X_train_sample,
+    y_train_sample,
+    cv=cv,
+    scoring="average_precision"
+)
+
+print("PR AUC médio (CV) na amostra:", scores_stack.mean())
+print("Desvio padrão na amostra:", scores_stack.std())
+print("-" * 30)
+
+print("Treinando o modelo final com a amostra SMOTE...")
+stacking_clf.fit(X_train_smote_sample, y_train_smote_sample)
+print("Modelo treinado com sucesso!")
+print("-" * 30)
+
+
+# --- 4. Predição e Avaliação com os dados de teste completos ---
+y_prob_stack = stacking_clf.predict_proba(X_test_scaler)[:, 1]
+
+threshold = 0.4
+y_pred_stack = (y_prob_stack >= threshold).astype(int)
+
+# Chamando a função de métricas
+metricas("Stacking Classifier", y_test, y_pred_stack, y_prob_stack)
+```
+
+
+```{python}
+curva_pr_auc("Stacking Classifier", y_test, y_prob_stack)
+```
+
+
+```{python}
+df_principal_stack, df_metricas_stack = simulacao_custo_fraude(y_test, y_pred_stack)
+display(df_principal_stack)
+```
+
+
+```{python}
+display(df_metricas_stack)
+```
+
+## Isolation Forest
+
+O Isolation Forest é um algoritmo de aprendizado de máquina não supervisionado projetado principalmente para a detecção de anomalias (outliers) em conjuntos de dados. Ele se mostra muito eficiente em problemas com grandes volumes de dados e alta dimensionalidade. Inspirado em técnicas de ensemble baseadas em árvores, o Isolation Forest opera de forma distinta de outros métodos, isolando rapidamente instâncias que se desviam dos padrões normais, o que permite identificar outliers com menor custo computacional e maior rapidez.
+
+
+```{python}
+#Instanciando o modelo não supervisionado
+iso = IsolationForest(
+    n_estimators = 80,          # números de arvores
+    contamination = 0.0017,    # fração de fraudes esperada
+    random_state = 70
+)
+
+#Treinando o modelos no dados
+#neste modelo nao se treina com o y
+iso.fit(X_train_scaler)
+
+# Realizando as previsões
+y_pred = iso.predict(X_test_scaler)
+
+#converter: -1 anomalia -> 1 (fraude), 1 (normal) -> 0
+y_pred = np.where(y_pred == -1, 1, 0)
+
+#Matriz de confusão
+print(f"Matriz de confusão:")
+print(confusion_matrix(y_test, y_pred))
+
+#Classification Report
+print(f"\nClassification Report:")
+print(classification_report(y_test, y_pred, digits = 4))
+
+#Roc Auc
+y_scores = iso.decision_function(X_test_scaler) * -1
+roc_auc = roc_auc_score(y_test, y_scores)
+print(f"\nROC AUC: {roc_auc:.4f}")
+
+#PR AUC
+pr_auc = average_precision_score(y_test, y_scores)
+print(f"PR AUC : {pr_auc:.4f}")
+```
+
+
+```{python}
+#Calculando a  Matriz de Confusão
+cm = confusion_matrix(y_test, y_pred)
+
+#Gráfico da Matriz Confusão
+fig, ax = plt.subplots(figsize = (8,6), facecolor = "lightgray")
+cmap = ListedColormap(["blue", "darkorange"])
+
+sns.heatmap(cm,
+            annot = True,
+            fmt = "d",
+            cmap = cmap,
+            cbar = False,
+            xticklabels = ["Não Fraude", "Fraude"],
+            yticklabels = ["Não Fraude", "Fraude"],
+            ax = ax)
+
+ax.set_title("Matriz de confusão do Isolation Forest", fontweight = "bold", fontsize = 20, pad =10)
+ax.set_xlabel("Previsão")
+ax.set_ylabel("Real")
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+plt.show()
+```
+
+
+```{python}
+#Gráficos  da curva roc
+fig, ax1 = plt.subplots(figsize= (8, 6), facecolor = "lightgray")
+RocCurveDisplay.from_predictions(y_test, y_scores, ax = ax1)
+
+ax1.set_title("Curva Roc do Isolation Forest", fontweight = "bold", fontsize = 20, pad = 10)
+sns.despine()
+plt.show()
+```
+
+
+```{python}
+#Grafico da PR Auc
+fig,ax2 = plt.subplots(figsize = (8,6), facecolor = "lightgray")
+PrecisionRecallDisplay.from_predictions(y_test, y_scores, ax = ax2)
+
+ax2.set_title("Curva PR AUC",fontweight = "bold", fontsize = 20, pad = 10 )
+
+sns.despine()
+plt.show()
+```
+
+
+```{python}
+df_principal_isol, df_metricas_isol = simulacao_custo_fraude(y_test, y_pred)
+display(df_principal_isol)
+```
+
+
+```{python}
+display(df_metricas_isol)
+```
+
+# Considerações Finais
+
+Para avaliar o desempenho dos modelos na classe minoritária, foram calculadas métricas tradicionais de classificação, como acurácia, ROC AUC, PR AUC, precisão, recall e F1-Score. Entre essas, a métrica PR AUC (Precision-Recall AUC) é a mais relevante neste contexto, pois avalia de forma equilibrada a capacidade do modelo de detectar fraudes, considerando a desproporção entre classes.
+
+| Modelo | Acurácia | ROC AUC | PR AUC | Precision | Recall | F1-Score |
+|--------|----------|---------|--------|-----------|--------|----------|
+| Regressão Logística | 0,9755 | 0,9741 | 0,7506 | 0,06 | 0,91 | 0,11 |
+| Logistic Regression | 0,9734 | 0,9669 | 0,7510 | 0,06 | 0,90 | 0,10 |
+| Regressão Logística Otimizada | 0,9755 | 0,9741 | 0,7509 | 0,06 | 0,91 | 0,11 |
+| Random Forest | 0,9956 | 0,9709 | 0,6813 | 0,26 | 0,88 | 0,41 |
+| Random Forest Otimizado | 0,9978 | 0,9666 | 0,4640 | 0,43 | 0,87 | 0,57 |
+| Gradient Boosting | 0,9988 | 0,9511 | 0,8307 | 0,60 | 0,85 | 0,70 |
+| XGBoost | 0,9988 | 0,9685 | 0,8648 | 0,61 | 0,88 | 0,72 |
+| Voting Classifier | 0,9985 | 0,9693 | 0,8561 | 0,54 | 0,87 | 0,67 |
+| Stacking Classifier | 0,9964 | 0,9698 | 0,7479 | 0,31 | 0,87 | 0,45 |
+| Isolation Forest | 0,9975 | 0,9421 | 0,1441 | 0,27 | 0,26 | 0,26 |
+
+Conforme observado, o XGBoost apresentou o melhor desempenho em PR AUC, o que indica sua superior capacidade de identificar corretamente transações fraudulentas mesmo em um dataset altamente desbalanceado. Essa métrica reforça a confiabilidade do modelo para aplicações práticas, mais relevante do que apenas acurácia ou recall isoladamente.
+
+Além da avaliação estatística, é essencial analisar o impacto financeiro dos modelos, pois cada transação fraudulenta detectada ou não detectada afeta diretamente o caixa da empresa. Para isso, calculamos métricas como Impacto Líquido, ROI e Taxa de Economia, que traduzem o desempenho do modelo em termos monetários, facilitando a interpretação gerencial.
+
+| Modelo | Impacto Líquido (R$) | ROI (%) | Taxa de Economia (%) |
+|--------|---------------------|---------|--------------------|
+| XGBoost | 6.242,54 | 275,3% | 87,7% |
+| Gradient Boosting | 5.560,28 | 268,9% | 84,7% |
+| Voting Classifier | 5.249,12 | 192,6% | 86,7% |
+| Random Forest Otimizado | 3.099,12 | 82,2% | 86,7% |
+| Stacking Classifier | -700,88 | 8,2% | 86,7% |
+| Isolation Forest | -9.316,08 | -11,4% | 25,5% |
+| Random Forest | -2.907,46 | -12,1% | 87,7% |
+| Regressão Logística | -59.523,20 | -84,3% | 90,8% |
+| Regressão Logística Otimizada | -59.673,20 | -84,3% | 90,8% |
+
+
+Conforme a tabela de resultados, o modelo XGBoost demonstrou ser o de melhor desempenho financeiro, gerando o maior Impacto Líquido e o maior ROI. Sua alta capacidade de identificar transações fraudulentas (alto recall) com um número relativamente baixo de falsos positivos (precisão) se traduziu diretamente em um lucro substancial para o negócio.
+
+Os modelos de Boosting (XGBoost e Gradient Boosting) e de Ensemble (Voting Classifier e Stacking Classifier) em geral superaram os modelos de base, como o Random Forest e a Regressão Logística. Isso valida a abordagem de combinar múltiplos modelos ou construir modelos sequenciais para lidar com a complexidade do problema de fraude.
+
+É notável, no entanto, que o Isolation Forest, apesar de ser um modelo não-supervisionado, obteve um impacto negativo significativo e um ROI negativo, o que o torna uma opção menos viável para este caso.
+
+O resultado da análise financeira reforça que a escolha do modelo ideal vai além de métricas de acurácia, devendo-se considerar o impacto direto nas finanças da empresa.
